@@ -1,0 +1,183 @@
+1.Creati o diagrama a bazei de date, folosind fonna de vizualizare standard, structura careia este
+descrisa la inceputul sarcinilor practice din capitolul 4. 
+
+Go
+CREATE SCHEMA universitatea
+Go
+CREATE TABLE universitatea.discipline
+(
+Id_Disciplina				INT PRIMARY KEY,
+Disciplina					VARCHAR(255),
+Nr_ore_plan_disciplina		SMALLINT
+)
+
+CREATE TABLE universitatea.grupe
+(
+Id_Grupa					SMALLINT PRIMARY KEY,
+Cod_Grupa					CHAR(255),
+Specialitatea				VARCHAR(255),
+Facultate					VARCHAR(255)
+)
+
+CREATE TABLE universitatea.studenti
+(
+Id_Student					INT PRIMARY KEY,
+Nume_Student				CHAR(50),
+Prenume_Student				VARCHAR(50),
+Data_Nastere_Student        DATE,
+Adresa_Postala_Student		VARCHAR(500)
+)
+
+CREATE TABLE universitatea.profesori
+(
+Id_Profesor					INT PRIMARY KEY,
+Nume_Profesor				CHAR(50),
+Prenume_Profesor			VARCHAR(50),
+Data_Nastere_Student        DATE,
+Adresa_Postala_Student		VARCHAR(500)
+)
+
+CREATE TABLE universitatea.studenti_reusita
+(
+Id_Student				    INT PRIMARY KEY,
+Id_Disciplina				INT,
+Id_Profesor					INT,
+Id_Grupa					INT,
+Tip_Evaluare				VARCHAR(50),
+Nota						TINYINT,
+Data_Evaluare               DATE
+)
+
+
+2.Sa se adauge constrangeri referentiale (legate cu tabelele studenti ~i profesori) necesare
+coloanelor Sef_grupa ~i Prof_Indrumator (sarcina3, capitolul 6) din tabelul grupe
+
+ALTER TABLE universitatea.grupe
+   ADD Sef_Grupa INT, Prof_Indrumator INT
+
+   ALTER TABLE universitatea.grupe
+   ADD UNIQUE (Sef_grupa)
+
+   ALTER TABLE universitatea.grupe
+   ADD UNIQUE (Prof_Indrumator);
+
+3. La diagrama construitii, sa se adauge ~i tabelul orarul definit in capitolul 6 al acestei lucrari:
+tabelul orarul contine identificatorul disciplinei (ld_Disciplina), identificatorul profesorului
+(Id_Profesor) ~i blocul de studii (Bloc). Cheia tabelului este constituita din trei cfunpuri:
+identificatorul grupei (Id_ Grupa), ziua lectiei (Z1), ora de inceput a lectiei (Ora), sala unde
+are loc lectia (Auditoriu). 
+
+
+drop table orarul
+CREATE TABLE orarul( Id_Disciplina int NOT NULL,
+                       Id_Profesor int NOT NULL, 
+					   Id_Grupa smallint NOT NULL,
+					   Zi       char(2) NOT NULL,
+					   Ora       Time NOT NULL,
+					   Auditoriu  int NOT NULL,
+					   Bloc       char(1) NOT NULL DEFAULT ('B'),
+CONSTRAINT [PK_orarul] PRIMARY KEY CLUSTERED (	Id_Grupa,Zi,Ora,Auditoriu )) ON [PRIMARY]
+
+
+
+
+4.Tabelul orarul trebuie sa contina ~i 2 chei secundare: (Zi, Ora, Id_ Grupa, Id_ Profesor) ~i
+(Zi, Ora, ld_Grupa, ld_Disciplina). 
+
+ALTER TABLE universitatea.orarul
+		ADD CONSTRAINT CompSK_1
+		    UNIQUE (Zi, Ora, Id_Grupa, Id_Profesor)
+
+ALTER TABLE universitatea.orarul
+		ADD CONSTRAINT CompSK_2
+		    UNIQUE (Zi, Ora, Id_Grupa, Id_Profesor)
+
+5.In diagrama, de asemenea, trebuie sa se defineasca constrangerile referentiale (FK-PK) ale
+atributelor ld_Disciplina, ld_Profesor, Id_ Grupa din tabelului orarul cu atributele tabelelor
+respective. 
+
+ALTER TABLE universitatea.orarul
+		ADD CONSTRAINT FK_ID_Disciplina
+		  FOREIGN KEY (Id_Grupa) REFERENCES universitatea.disciplina (Id_Disciplina)
+
+
+ ALTER TABLE universitatea.orarul
+		ADD CONSTRAINT FK_ID_Grupa
+		  FOREIGN KEY (Id_Grupa) REFERENCES universitatea.grupe (Id_Grupa)
+
+ ALTER TABLE universitatea.orarul
+		ADD CONSTRAINT FK_ID_Profesor
+		  FOREIGN KEY (Id_Profesor) REFERENCES universitatea.profesori (Id_Profesor)
+
+6.Creati, in baza de date universitatea, trei scheme noi: cadre_didactice, plan_studii ~i studenti.
+Transferati tabelul profesori din schema dbo in schema cadre didactice, tinand cont de
+dependentelor definite asupra tabelului mentionat. in acela~i mod ~ se trateze tabelele orarul,
+discipline care apartin schemei plan_studii ~i tabelele studenti, studenti_reusita, care apartin
+schemei studenti. Se scrie instructiunile SQL respective. 
+
+GO
+CREATE SCHEMA cadre_didactice
+GO
+ALTER SCHEMA cadre_didactice TRANSFER dbo.profesori
+
+
+GO
+CREATE SCHEMA plan_studii
+GO
+ALTER SCHEMA plan_studii TRANSFER dbo.orarul
+ALTER SCHEMA plan_studii TRANSFER dbo.discipline
+
+
+GO
+CREATE SCHEMA studenti
+GO
+ALTER SCHEMA studenti TRANSFER dbo.studenti
+ALTER SCHEMA studenti TRANSFER dbo.studenti_reusita    
+
+
+7.  Modificati 2-3 interogari asupra bazei de date universitatea prezentate in capitolul 4 astfel ca
+numele tabelelor accesate sa fie descrise in mod explicit, tinand cont de faptul ca tabelele au
+fost mutate in scheme noi. 
+
+
+(14)Aflati numele si prenumele studentilor, precum si cursurile promovate cu note mai mari de 8 la examen. 
+Select distinct studenti.Nume_Student, studenti.Prenume_Student, plan_studii.discipline.Disciplina, studenti.studenti_reusita.Nota
+FROM studenti.studenti 
+INNER JOIN studenti.studenti_reusita ON studenti.studenti.Id_Student=studenti.studenti.Id_Student
+INNER JOIN plan_studii.discipline ON studenti.studenti_reusita.Id_Disciplina=plan_studii.discipline.Id_Disciplina
+Where studenti.studenti_reusita.Nota>8
+
+
+
+(8)Obtineti identificatorii si numele studentilor, ale examenelor sustinute in anul 2018.
+Select distinct studenti.studenti.Id_Student, studenti.studenti.Nume_Student
+FROM studenti.studenti INNER JOIN studenti.studenti_reusita ON studenti.studenti.Id_Student=studenti.studenti_reusita.Id_Student
+Where year(studenti.studenti_reusita.Data_Evaluare)=2018
+
+
+
+8.Creați sinonimele respective pentru a simplifica interogările construite în exercițiul precedent și reformulați interogările, 
+folosind sinonimele create.
+
+GO
+CREATE SYNONYM student FOR studenti.studenti
+GO
+CREATE SYNONYM reusita FOR studenti.studenti_reusita
+GO
+CREATE SYNONYM disciplina FOR plan_studii.discipline
+
+
+
+(14) Aflati numele si prenumele studentilor, precum si cursurile promovate cu note mai mari de 8 la examen. 
+Select distinct studenti.Nume_Student, studenti.Prenume_Student, plan_studii.discipline.Disciplina, studenti.studenti_reusita.Nota
+FROM studenti.studenti 
+INNER JOIN studenti.studenti_reusita ON studenti.studenti.Id_Student=studenti.studenti.Id_Student
+INNER JOIN plan_studii.discipline ON studenti.studenti_reusita.Id_Disciplina=plan_studii.discipline.Id_Disciplina
+Where studenti.studenti_reusita.Nota>8
+
+
+
+(8)Obtineti identificatorii si numele studentilor, ale examenelor sustinute in anul 2018.
+Select distinct student.Id_Student, student.Nume_Student
+FROM student INNER JOIN reusita ON student.Id_Student=reusita.Id_Student
+Where year(reusita.Data_Evaluare)=2018

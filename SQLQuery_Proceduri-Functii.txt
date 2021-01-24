@@ -1,0 +1,320 @@
+﻿-- Să se găsească modelul, viteza procesorului și capacitatea discului dur pentru toate pc_urile care costă mai puțin de 500$. 
+-- Schema rezultatului afișat va fi: Model,Viteza și Hd.
+
+USE calculatoare
+GO
+if OBJECT_ID ('P1','P') IS NOT NULL DROP PROCEDURE P1;
+GO
+Create procedure P1
+	@Pret FLOAT
+AS
+Select Model,Viteza,Hd from pc_uri
+	where pret<@Pret; 
+
+Exec P1 @Pret=500;
+------function------------
+GO
+if OBJECT_ID ('F1','FN') IS NOT NULL DROP FUNCTION F1
+GO
+CREATE FUNCTION F1 (@pret INT)
+RETURNS TABLE
+AS
+ RETURN
+ (
+	Select Model,Viteza,Hd from pc_uri
+	 where pret<@pret
+ )
+
+SELECT * FROM F1 (500)
+
+
+-- Să se găsească producătorii de imprimante. Afișați: Producător.
+GO
+if OBJECT_ID ('P2','P') IS NOT NULL DROP PROCEDURE P2;
+GO
+Create procedure P2
+	@Tip VARCHAR(10)
+AS
+Select distinct Producator from produse 
+	where tip=@Tip;
+
+Execute P2 @Tip='Imprimante';
+
+---------function--------
+
+GO
+if OBJECT_ID ('F2','FN') IS NOT NULL DROP FUNCTION F2
+GO
+CREATE FUNCTION F2(@tip VARCHAR(10))
+RETURNS TABLE
+AS
+ RETURN
+ (
+	Select distinct Producator from produse 
+	where tip=@tip
+ )
+
+SELECT * FROM F2('Imprimante')
+
+
+--Să se afișeze producătorii și viteza pc-urilor ce posedă HD-uri cu capacitatea cea mai mică.
+
+GO
+if OBJECT_ID ('P3','P') IS NOT NULL DROP PROCEDURE P3;
+GO
+Create procedure P3
+	@Capacitate Decimal(2,0)
+AS
+SELECT  l.producator, l.Model, p.Viteza, p.Hd
+ FROM produse l INNER JOIN pc_uri p
+ ON l.Model=p.Model AND Tip='PC' 
+ WHERE p.Hd=@Capacitate;
+
+DECLARE @Capacitate_min Decimal(2,0) = (SELECT MIN(Hd) FROM pc_uri)
+Execute P3 @Capacitate=@Capacitate_min;
+
+----function---------------
+GO
+if OBJECT_ID ('F3','FN') IS NOT NULL DROP FUNCTION F3;
+GO
+Create function F3 (@Capacitate decimal(2,0))
+RETURNS TABLE
+AS
+RETURN(
+SELECT  l.producator, l.Model, p.Viteza, p.Hd
+ FROM produse l INNER JOIN pc_uri p
+ ON l.Model=p.Model AND Tip='PC' 
+ WHERE p.Hd=@Capacitate
+)
+
+DECLARE @Capacitate_min Decimal(2,0) = (SELECT MIN(Hd) FROM pc_uri)
+Select * from F3(@Capacitate_min)
+
+--Să se găsească modelele și producătorii produselor cu prețul mai mare de 450 $.
+
+GO
+if OBJECT_ID ('P4','P') IS NOT NULL DROP PROCEDURE P4;
+GO
+Create procedure P4
+	@Pret Float
+AS
+Select distinct produse.Producator, produse.Model
+from produse
+left join pc_uri on produse.Model=pc_uri.Model 
+left join laptop_uri on produse.Model=laptop_uri.Model 
+left join imprimante on produse.Model=imprimante.Model 
+where 
+pc_uri.pret>@Pret or laptop_uri.pret>@Pret or imprimante.pret>@Pret;
+
+Execute P4 @Pret=450;
+
+-- Să se găsească producătorii care vând laptopuri sau imprimante, dar nu vând pc-uri.
+
+GO
+if OBJECT_ID ('P5','P') IS NOT NULL DROP PROCEDURE P5;
+GO
+Create procedure P5
+	@Tip VARCHAR(10)
+AS
+ select  distinct Producator 
+ from produse 
+  where  Producator not in 
+ (select Producator from produse where Tip=@Tip);
+
+Execute P5 @Tip='PC';
+---------------------------------------
+
+GO
+if OBJECT_ID ('P5_0','P') IS NOT NULL DROP PROCEDURE P5_0;
+GO
+Create procedure P5_0
+	@Tip1 VARCHAR(10),
+	@Tip2 VARCHAR(10),
+	@Tip3 VARCHAR(10)
+AS
+ select  distinct Producator 
+ from produse where Tip=@Tip1 OR  Tip=@Tip2
+ except
+ select distinct Producator from produse where Tip=@Tip3;
+
+Execute P5_0 @Tip1='Imprimante', @Tip2='Laptop_uri', @Tip3='PC';
+
+-----------------
+GO
+if OBJECT_ID ('P5_00)','P') IS NOT NULL DROP PROCEDURE P5_00;
+GO
+Create procedure P5_00
+	@Tip1 VARCHAR(10)
+as	
+ select  distinct Producator 
+ from produse where Tip<>@Tip1;
+ 
+ exec P5_00 @Tip1='PC' 
+
+
+-- Să se găsească capacitățile dure, care coincid cu 2 sau mai multe pc-uri. Să se afișeze HD.
+
+GO
+if OBJECT_ID ('PP1','P') IS NOT NULL DROP PROCEDURE PP1;
+GO
+Create procedure PP1	
+AS
+select Hd
+from pc_uri
+group by Hd having count(Hd)>1
+
+Execute PP1;
+-----------------function----------------
+GO
+if OBJECT_ID ('FF1','FN') IS NOT NULL DROP FUNCTION FF1;
+GO
+Create function FF1 ()
+RETURNS TABLE
+AS
+RETURN(
+select hd
+from pc_uri
+group by HD having count(HD)>1
+)
+
+Select * from FF1()
+
+-- Să se găsească perechile de modele de pc-uri, care posedă procesoare cu aceeași viteza și memorie RAM cu aceeași capacitate. 
+-- Ca rezultat, fiecare pereche se afișează o singură dată, adică (i,j), dar nu (j,i). 
+-- Ordinea de afișare: modelul cu număr mai mare, modelul cu număr mai mic, viteza și Ram.
+
+GO
+if OBJECT_ID ('PP2','P') IS NOT NULL DROP PROCEDURE PP2;
+GO
+Create procedure PP2
+AS
+select distinct p1.Model [Model 1], p2.Model [Model 2], p2.Viteza, p2.RAM
+ from pc_uri as p1, pc_uri as p2
+ where p1.Viteza=p2.Viteza and p1.RAM=p2.RAM and p1.Model>p2.Model 
+ order by p1.Model
+
+Execute PP2;
+
+--------------funtion-----------
+GO
+if OBJECT_ID ('FF2','FN') IS NOT NULL DROP FUNCTION FF2;
+GO
+Create function FF2 ()
+RETURNS TABLE
+AS
+RETURN(
+select distinct p1.Model [Model 1], p2.Model [Model 2], p2.Viteza, p2.RAM
+ from pc_uri as p1, pc_uri as p2
+ where p1.Viteza=p2.Viteza and p1.RAM=p2.RAM and p1.Model>p2.Model 
+)
+
+Select * from FF2()
+
+-- Să se găsească laptopurile, a căror viteză este mai mică decât la orice pc-u. Să se afișeze: Tip, Model, Viteza.
+
+GO
+if OBJECT_ID ('PP3','P') IS NOT NULL DROP PROCEDURE PP3;
+GO
+Create procedure PP3
+	@Viteza float
+AS
+Select produse.Tip, laptop_uri.Model, laptop_uri.Viteza
+from produse join laptop_uri on produse.model=laptop_uri.model
+where laptop_uri.viteza<@Viteza
+
+DECLARE @find integer = (Select MIN(viteza) from pc_uri)
+Execute PP3 @Viteza=@find
+
+-------------------
+
+GO
+if OBJECT_ID ('PP3_0','P') IS NOT NULL DROP PROCEDURE PP3_0;
+GO
+Create procedure PP3_0
+AS
+Select produse.Tip, laptop_uri.Model, laptop_uri.Viteza
+from produse join laptop_uri on produse.model=laptop_uri.model
+where laptop_uri.viteza< ALL (Select viteza from pc_uri)
+
+Execute PP3_0;
+
+----function---------------
+GO
+if OBJECT_ID ('FF3','FN') IS NOT NULL DROP FUNCTION FF3;
+GO
+Create function FF3 (@Viteza float)
+RETURNS TABLE
+AS
+RETURN(
+Select produse.Tip, laptop_uri.Model, laptop_uri.Viteza
+from produse,laptop_uri
+where produse.model=laptop_uri.model
+and laptop_uri.viteza<@Viteza
+)
+
+DECLARE @Min integer = (Select MIN(viteza) from pc_uri)
+Select * from FF3(@Min)
+
+
+
+-- Să se găsească producătorii celor mai scumpe laptopuri sau pc-uri. Afișați Producător, Model și Pret.
+
+GO
+if OBJECT_ID ('PP4','P') IS NOT NULL DROP PROCEDURE PP4;
+GO
+Create procedure PP4
+	@Pret1 FLOAT,
+	@Pret2 FLOAT
+AS
+select produse.Producator, produse.Model, Pret 
+from produse join pc_uri on produse.Model=pc_uri.Model
+where  Pret=@Pret1
+union
+select produse.Producator, produse.Model, Pret 
+from produse join laptop_uri on produse.Model=laptop_uri.Model
+where Pret=@Pret2
+
+DECLARE @max1 integer = (Select max(Pret) from pc_uri)
+DECLARE @max2 integer = (Select max(Pret) from laptop_uri)
+Execute PP4 @Pret1=@max1,@Pret2=@max2
+
+
+-- Să se găsească producători, care produc cel puțin 3 pc-uri. Afișați Producător, numărul de modele.
+
+GO
+if OBJECT_ID ('PP5','P') IS NOT NULL DROP PROCEDURE PP5;
+GO
+Create procedure PP5
+AS
+Select Producator, count(*) as [Numarul de modele]
+from pc_uri inner join produse
+on pc_uri.Model=produse.model
+group by Producator having count(*)>=3
+
+Execute PP5;
+---------------------------------
+GO
+if OBJECT_ID ('PP5_0','P') IS NOT NULL DROP PROCEDURE PP5_0;
+GO
+Create procedure PP5_0
+AS
+Select Producator, count(*) as [Numarul de modele]
+from  produse
+where Tip='PC'
+group by Producator having count(*)>=3
+
+Execute PP5_0;
+
+-- Să se găsească suma totală a prețurilor celor mai ieftine imprimante de fiecare tip.
+
+GO
+if OBJECT_ID ('PP6','P') IS NOT NULL DROP PROCEDURE PP6;
+GO
+Create procedure PP6
+AS
+select distinct 
+(select min(pret) from imprimante where tip='Jet')+
+(select min(pret) from imprimante where tip='Laser')+
+(select min(pret) from imprimante where tip='Matrix') as [Pret total] from imprimante
+
+Execute PP6;
